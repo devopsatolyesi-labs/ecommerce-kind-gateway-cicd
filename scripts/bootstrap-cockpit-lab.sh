@@ -166,6 +166,8 @@ spec:
       sectionName: web
   hostnames:
     - "${PREFIX}-kind.${DOMAIN}"
+    - "${PREFIX}-app1.${DOMAIN}"
+    - "${PREFIX}-k8s-app1.${DOMAIN}"
     - "localhost"
     - "127.0.0.1"
   rules:
@@ -257,7 +259,7 @@ server {
 server {
     listen 80;
     listen 443 ssl;
-    server_name ${PREFIX}-kind.${DOMAIN};
+    server_name ${PREFIX}-kind.${DOMAIN} ${PREFIX}-app1.${DOMAIN} ${PREFIX}-k8s-app1.${DOMAIN};
 
     ssl_certificate /etc/nginx/ssl/origin.crt;
     ssl_certificate_key /etc/nginx/ssl/origin.key;
