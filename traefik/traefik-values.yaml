@@ -1,5 +1,5 @@
 # ==============================================================================
-# Traefik v3 Official Helm Chart Values (Gateway API Enabled)
+# Traefik v3 Helm Chart Configuration with Kubernetes Gateway API Support
 # ==============================================================================
 
 deployment:
@@ -9,17 +9,28 @@ deployment:
 providers:
   kubernetesCRD:
     enabled: true
-    allowCrossNamespace: true
   kubernetesIngress:
-    enabled: false
+    enabled: true
   kubernetesGateway:
     enabled: true
-    statusAddress:
-      ip: "127.0.0.1"
+    experimentalChannel: false
 
-experimental:
-  kubernetesGateway:
-    enabled: true
+gatewayClass:
+  enabled: true
+
+gateway:
+  enabled: true
+  listeners:
+    web:
+      port: 8000
+      protocol: HTTP
+      routes:
+        namespaces:
+          from: All
+
+service:
+  enabled: true
+  type: NodePort
 
 ports:
   web:
@@ -28,47 +39,18 @@ ports:
       default: true
     exposedPort: 80
     nodePort: 30080
+    protocol: TCP
   websecure:
     port: 8443
     expose:
       default: true
     exposedPort: 443
-    nodePort: 30443
-  traefik:
-    port: 9000
-    expose:
-      default: true
-    exposedPort: 9000
+    protocol: TCP
 
-ingressClass:
-  enabled: false
-
-gatewayClass:
-  enabled: true
-  name: traefik
-  controllerName: traefik.io/gateway-controller
-
-dashboard:
-  enabled: true
-
-metrics:
-  prometheus:
-    enabled: true
-    addRoutersLabels: true
-    addServicesLabels: true
+api:
+  dashboard: true
+  insecure: true
 
 logs:
   general:
     level: INFO
-    format: json
-  access:
-    enabled: true
-    format: json
-
-resources:
-  requests:
-    cpu: "100m"
-    memory: "128Mi"
-  limits:
-    cpu: "500m"
-    memory: "512Mi"
