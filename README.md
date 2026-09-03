@@ -13,6 +13,7 @@ Laboratuvarda her öğrenci için tanımlanan standart alt alan adları (`studen
 | **Cockpit Web Terminal** | Linux ortam yönetimi ve web terminali | `https://student100-cockpit.devopsatolyesi.com` |
 | **Jenkins CI/CD** | JCasC ile yapılandırılmış dağıtım hattı | `https://student100-jenkins.devopsatolyesi.com` |
 | **SonarQube** | Statik kod kalitesi ve güvenlik kapısı | `https://student100-sonarqube.devopsatolyesi.com` |
+| **Harbor Registry** | Güvenli OCI konteyner imaj deposu | `https://student100-harbor.devopsatolyesi.com` |
 | **E-Commerce Storefront** | Gateway API üzerinden canlı uygulama | `https://student100-app1.devopsatolyesi.com` |
 
 ---

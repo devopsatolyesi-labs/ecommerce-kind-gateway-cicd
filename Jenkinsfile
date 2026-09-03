@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        HARBOR_REGISTRY   = 'harbor.devopsatolyesi.com'
+        HARBOR_REGISTRY   = 'student100-harbor.devopsatolyesi.com'
         HARBOR_PROJECT    = 'ecommerce'
         IMAGE_NAME        = 'online-boutique-frontend'
         IMAGE_TAG         = "${BUILD_NUMBER}"
@@ -72,12 +72,21 @@ pipeline {
             }
         }
 
-        stage('6. Registry Push / Kind Image Load') {
+        stage('6. Harbor Registry Push & Kind Load') {
             steps {
-                sh """
-                    echo "Loading image into Kind cluster..."
-                    kind load docker-image online-boutique-frontend:latest --name ecommerce-kind-cluster 2>/dev/null || true
-                """
+                withCredentials([usernamePassword(credentialsId: "${HARBOR_CREDS_ID}", usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASS')]) {
+                    sh """
+                        echo "Logging in to Harbor Registry: ${HARBOR_REGISTRY}..."
+                        echo "\${HARBOR_PASS}" | docker login ${HARBOR_REGISTRY} -u "\${HARBOR_USER}" --password-stdin
+                        docker tag online-boutique-frontend:latest ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker tag online-boutique-frontend:latest ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}:latest
+                        echo "Pushing image to Harbor repository: ${HARBOR_PROJECT}/${IMAGE_NAME}..."
+                        docker push ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}:${IMAGE_TAG}
+                        docker push ${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${IMAGE_NAME}:latest
+                        echo "Loading image into Kind cluster..."
+                        kind load docker-image online-boutique-frontend:latest --name ecommerce-kind-cluster 2>/dev/null || true
+                    """
+                }
             }
         }
 
