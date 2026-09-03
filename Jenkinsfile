@@ -28,10 +28,12 @@ pipeline {
         stage('2. Unit Tests & Code Coverage') {
             steps {
                 sh '''
-                    echo "=== Running Go Unit Tests across Microservices ==="
-                    cd src/frontend && go test -v -cover ./...
-                    cd ../productcatalogservice && go test -v ./...
-                    cd ../shippingservice && go test -v ./...
+                    echo "=== Running Go Unit Tests across Microservices (Golang Container) ==="
+                    docker run --rm -v $(pwd):/app -w /app golang:1.24-alpine sh -c "
+                        cd src/frontend && go test -v -cover ./...
+                        cd ../productcatalogservice && go test -v ./...
+                        cd ../shippingservice && go test -v ./...
+                    "
                     echo "All Go microservice unit tests passed successfully!"
                 '''
             }
@@ -68,7 +70,9 @@ pipeline {
             steps {
                 sh """
                     echo "Running Trivy container vulnerability scanner..."
-                    trivy image \
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest image \
                         --severity HIGH,CRITICAL \
                         --format table \
                         online-boutique-frontend:${IMAGE_TAG} || true
