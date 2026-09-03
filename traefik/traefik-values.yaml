@@ -54,3 +54,10 @@ api:
 logs:
   general:
     level: INFO
+
+metrics:
+  prometheus:
+    enabled: true
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
