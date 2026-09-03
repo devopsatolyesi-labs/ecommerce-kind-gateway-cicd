@@ -84,7 +84,7 @@ fi
 log_info "2/7 Configuring Kind Cluster with Gateway API HostPort (18081)..."
 CLUSTER_NAME="ecommerce-kind-cluster"
 
-if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
+if sudo kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
     log_info "Kind cluster '${CLUSTER_NAME}' already exists. Reusing..."
 else
     cat << 'EOF' > /tmp/kind-gateway-config.yaml
@@ -108,10 +108,15 @@ nodes:
     listenAddress: "127.0.0.1"
     protocol: TCP
 EOF
-    kind create cluster --name "${CLUSTER_NAME}" --config /tmp/kind-gateway-config.yaml
+    sudo kind create cluster --name "${CLUSTER_NAME}" --config /tmp/kind-gateway-config.yaml
     rm -f /tmp/kind-gateway-config.yaml
 fi
 
+# Ensure user has access to kubeconfig
+mkdir -p "$HOME/.kube"
+sudo cp /root/.kube/config "$HOME/.kube/config" 2>/dev/null || true
+sudo chown -R "$USER:$USER" "$HOME/.kube" 2>/dev/null || true
+export KUBECONFIG="$HOME/.kube/config"
 kubectl cluster-info
 
 # ------------------------------------------------------------------------------
@@ -177,10 +182,10 @@ EOF
 log_info "5/7 Starting Jenkins (Port 18080) and SonarQube (Port 19000)..."
 
 # Jenkins
-if ! docker ps -a --format '{{.Names}}' | grep -q '^training-jenkins$'; then
+if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^training-jenkins$'; then
     sudo mkdir -p /var/jenkins_home
     sudo chown -R 1000:1000 /var/jenkins_home 2>/dev/null || true
-    docker run -d \
+    sudo docker run -d \
         --name training-jenkins \
         --restart unless-stopped \
         -p 127.0.0.1:18080:8080 \
@@ -191,13 +196,13 @@ if ! docker ps -a --format '{{.Names}}' | grep -q '^training-jenkins$'; then
     log_success "Jenkins container started on 127.0.0.1:18080"
 else
     log_info "Jenkins container already present. Ensuring running..."
-    docker start training-jenkins >/dev/null 2>&1 || true
+    sudo docker start training-jenkins >/dev/null 2>&1 || true
 fi
 
 # SonarQube
-if ! docker ps -a --format '{{.Names}}' | grep -q '^training-sonarqube$'; then
+if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^training-sonarqube$'; then
     sudo sysctl -w vm.max_map_count=262144 || true
-    docker run -d \
+    sudo docker run -d \
         --name training-sonarqube \
         --restart unless-stopped \
         -p 127.0.0.1:19000:9000 \
@@ -206,7 +211,7 @@ if ! docker ps -a --format '{{.Names}}' | grep -q '^training-sonarqube$'; then
     log_success "SonarQube container started on 127.0.0.1:19000"
 else
     log_info "SonarQube container already present. Ensuring running..."
-    docker start training-sonarqube >/dev/null 2>&1 || true
+    sudo docker start training-sonarqube >/dev/null 2>&1 || true
 fi
 
 # ------------------------------------------------------------------------------
