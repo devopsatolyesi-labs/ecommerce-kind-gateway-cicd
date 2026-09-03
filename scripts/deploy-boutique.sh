@@ -11,8 +11,12 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 log_info() { printf '\033[1;34m[INFO]\033[0m %s\n' "$*"; }
 log_success() { printf '\033[1;32m[SUCCESS]\033[0m %s\n' "$*"; }
 
-log_info "Ensuring Traefik Gateway API Controller is installed..."
-"${SCRIPT_DIR}/setup-traefik-gateway.sh"
+if ! kubectl get gateway traefik-gateway -n traefik &>/dev/null; then
+    log_info "Ensuring Traefik Gateway API Controller is installed..."
+    "${SCRIPT_DIR}/setup-traefik-gateway.sh"
+else
+    log_info "Traefik Gateway already running, proceeding to app deployment..."
+fi
 
 log_info "Deploying Google Online Boutique microservices..."
 kubectl apply -f "${ROOT_DIR}/release/kubernetes-manifests.yaml"

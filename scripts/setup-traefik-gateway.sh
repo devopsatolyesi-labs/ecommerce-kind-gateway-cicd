@@ -20,9 +20,9 @@ fi
 
 log_info "Connected to Kubernetes cluster: $(kubectl config current-context)"
 
-# 2. Install Official Kubernetes Gateway API Standard CRDs (v1.2.0)
-log_info "Applying Kubernetes Gateway API Standard CRDs (v1.2.0)..."
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+# 2. Install Official Kubernetes Gateway API Standard CRDs (v1.5.1)
+log_info "Applying Kubernetes Gateway API Standard CRDs (v1.5.1)..."
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
 
 # 3. Add and update Traefik Helm Repository
 log_info "Configuring Traefik Helm repository..."
