@@ -1,0 +1,10 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: traefik
+  labels:
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/part-of: gateway-api
+spec:
+  controllerName: traefik.io/gateway-controller
+  description: "Traefik v3 Official Kubernetes Gateway API Controller"

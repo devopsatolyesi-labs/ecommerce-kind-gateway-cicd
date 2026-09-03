@@ -1,0 +1,28 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: boutique-gateway
+  namespace: default
+  labels:
+    app.kubernetes.io/name: boutique-gateway
+    app.kubernetes.io/part-of: online-boutique
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: devops-origin-tls
+            kind: Secret
+      allowedRoutes:
+        namespaces:
+          from: All

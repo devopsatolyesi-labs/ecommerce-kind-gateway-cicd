@@ -1,0 +1,17 @@
+# ==============================================================================
+# Trivy Vulnerability Scanner Configuration
+# ==============================================================================
+
+format: table
+exit-code: 1
+severity:
+  - HIGH
+  - CRITICAL
+ignore-unfixed: true
+vuln-type:
+  - os
+  - library
+scanners:
+  - vuln
+  - secret
+  - misconfig
