@@ -78,9 +78,22 @@ sudo docker run -d \
 
 ---
 
-### Adım 3: Jenkins as Code (JCasC) ile Jenkins'i Başlatma
+---
 
-Jenkins'in eklentilerle, hazır pipeline işiyle (`Online-Boutique-Gateway-CI-CD`) ve SonarQube kimlik bilgileriyle kurulum sihirbazına gerek kalmadan ayağa kalkması için:
+### Adım 3: Harbor OCI Registry ile Tanışma
+
+Laboratuvar ortamında kurumsal bir özel imaj deposu (Registry) hazır olarak çalışır:
+* **URL:** `https://student<ID>-harbor.devopsatolyesi.com`
+* **Kullanıcı:** `admin` | **Şifre:** `BilgincIT454`
+* **Hazır Proje:** `ecommerce` (Public)
+
+Jenkins derlediği frontend imajını hem bu Harbor deposuna etiketleyip push eder, hem de yerel Kind kümesine yükler.
+
+---
+
+### Adım 4: Jenkins as Code (JCasC) ile Jenkins'i Başlatma
+
+Jenkins'in eklentilerle, hazır pipeline işiyle (`Online-Boutique-Gateway-CI-CD`), Harbor ve SonarQube kimlik bilgileriyle kurulum sihirbazına gerek kalmadan ayağa kalkması için:
 
 ```bash
 # 1. JCasC Jenkins imajını derleyin (Kubectl, Docker CLI, SonarScanner dahil)
@@ -112,7 +125,7 @@ sudo docker network connect training-net training-jenkins
 
 ---
 
-### Adım 4: Jenkins Pipeline'ını Çalıştırma
+### Adım 5: Jenkins Pipeline'ını Çalıştırma
 
 1. Tarayıcınızda Jenkins'e giriş yapın:
    * **URL:** `https://student<ID>-jenkins.devopsatolyesi.com`
@@ -122,7 +135,7 @@ sudo docker network connect training-net training-jenkins
 
 ---
 
-### Adım 5: Pipeline Aşamalarını İzleme
+### Adım 6: Pipeline Aşamalarını İzleme
 
 Pipeline şu 8 aşamayı sırasıyla icra eder:
 
@@ -131,19 +144,31 @@ Pipeline şu 8 aşamayı sırasıyla icra eder:
 3. **3. SonarQube Code Quality Gate:** `sonar-scanner` ile statik kod analizini `http://training-sonarqube:9000` adresine gönderir ve kalite denetimini tamamlar.
 4. **4. Docker Multi-Stage Build:** `src/frontend` için optimize edilmiş konteyner imajını üretir.
 5. **5. Container Security Scan (Trivy):** Üretilen imajı güvenlik açıkları (CVE) için tarar.
-6. **6. Kind Image Load:** İmajı Kind Kubernetes kümesine yükler (`kind load docker-image`).
+6. **6. Harbor Registry Push & Kind Load:** İmajı Harbor OCI deposuna (`student<ID>-harbor.../ecommerce/online-boutique-frontend`) push eder ve Kind kümesine aktarır.
 7. **7. Deploy to Kubernetes (Gateway API):** Online Boutique mikroservislerini ve Traefik v3 `HTTPRoute` tanımlarını kümeye uygular.
 8. **8. Automated Smoke Test:** Uçtan uca sağlık denetimi yapar.
 
 ---
 
-### Adım 6: Canlı E-Ticaret Uygulamasını Doğrulama
+### Adım 7: Canlı E-Ticaret Uygulamasını Doğrulama
 
 Pipeline başarıyla tamamlandığında (`SUCCESS`), e-ticaret mağazanız Traefik Gateway API üzerinden Cloudflare ile güvenli (HTTPS) olarak yayına girer:
 
 🌐 **Canlı Uygulama:** `https://student<ID>-app1.devopsatolyesi.com`
 
 Tarayıcınızda açıp ürünleri sepete ekleyebilir, sipariş akışını test edebilirsiniz.
+
+---
+
+## 📊 Hangi Projede Hangi İzleme (Monitoring) Kullanılmalı?
+
+DevOps eğitim programındaki 3 Capstone projesi arasında izleme araçları bilinçli olarak branşlaştırılmıştır:
+
+| Proje | İzleme Aracı | Odak Noktası & Kullanım Nedeni |
+|---|---|---|
+| **Proje 1 (Bu Proje)** | **Prometheus + Grafana** | **Metrik Tabanlı İzleme:** Traefik Gateway API Ingress metrikleri, HTTP RPS, p95/p99 latency, Pod CPU/Bellek tüketimi. |
+| **Proje 2** | **ELK Stack (Elasticsearch, Logstash, Kibana)** | **Merkezi Log Yönetimi & SIEM:** AWS üzerinde çalışan servislerin JSON loglarının toplanması, filtrelenmesi ve log analitiği. |
+| **Proje 3** | **OpenTelemetry (OTel + Jaeger)** | **Dağıtık İzleme (Tracing) & SRE/SLO:** Mikroservisler arası RPC çağrı zincirleri, Span analizi, SLO & Hata Bütçesi takibi. |
 
 ---
 
