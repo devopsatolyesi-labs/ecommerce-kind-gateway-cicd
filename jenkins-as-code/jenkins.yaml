@@ -1,0 +1,67 @@
+jenkins:
+  systemMessage: "DevOps Atolyesi — Cloud-Native E-Commerce CI/CD Platform (Managed via JCasC)"
+  numExecutors: 4
+  mode: NORMAL
+  scmCheckoutRetryCount: 3
+
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${PLATFORM_ADMIN_PASSWORD:-BilgincIT454}"
+
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              description: "SonarQube Global Analysis Token"
+              secret: "${SONAR_TOKEN}"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "harbor-credentials"
+              description: "Harbor OCI Registry Credentials"
+              username: "${HARBOR_USER:-admin}"
+              password: "${HARBOR_PASS:-BilgincIT454}"
+
+unclassified:
+  location:
+    url: "https://jenkins.devopsatolyesi.com/"
+    adminAddress: "info@devopsatolyesi.com"
+
+  sonarGlobalConfiguration:
+    installations:
+      - name: "SonarQube"
+        serverUrl: "${SONAR_HOST_URL:-https://sonar.devopsatolyesi.com}"
+        credentialsId: "sonar-token"
+        triggers:
+          skipScmCause: false
+
+jobs:
+  - script: >
+      pipelineJob('Online-Boutique-Gateway-CI-CD') {
+        description('Automated End-to-End DevSecOps Pipeline with Traefik Gateway API Rollout')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+        triggers {
+          scm('H/5 * * * *')
+        }
+      }
