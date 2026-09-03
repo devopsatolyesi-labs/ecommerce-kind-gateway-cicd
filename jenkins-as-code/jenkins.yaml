@@ -10,6 +10,8 @@ jenkins:
       users:
         - id: "admin"
           password: "${PLATFORM_ADMIN_PASSWORD:-BilgincIT454}"
+        - id: "student"
+          password: "${STUDENT_PASSWORD:-BilgincIT454}"
 
   authorizationStrategy:
     loggedInUsersCanDoAnything:
@@ -23,7 +25,7 @@ credentials:
               scope: GLOBAL
               id: "sonar-token"
               description: "SonarQube Global Analysis Token"
-              secret: "${SONAR_TOKEN}"
+              secret: "${SONAR_TOKEN:-squ_bfa0de4cb146a6a88776e9cd108c03442dc06146}"
           - usernamePassword:
               scope: GLOBAL
               id: "harbor-credentials"
@@ -33,13 +35,13 @@ credentials:
 
 unclassified:
   location:
-    url: "https://jenkins.devopsatolyesi.com/"
+    url: "${JENKINS_URL:-https://student100-jenkins.devopsatolyesi.com/}"
     adminAddress: "info@devopsatolyesi.com"
 
   sonarGlobalConfiguration:
     installations:
       - name: "SonarQube"
-        serverUrl: "${SONAR_HOST_URL:-https://sonar.devopsatolyesi.com}"
+        serverUrl: "${SONAR_HOST_URL:-http://172.17.0.1:19000}"
         credentialsId: "sonar-token"
         triggers:
           skipScmCause: false

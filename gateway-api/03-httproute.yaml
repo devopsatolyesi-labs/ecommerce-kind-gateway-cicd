@@ -1,18 +1,27 @@
+# ==============================================================================
+# Kubernetes Gateway API HTTPRoute for Google Online Boutique
+# Routes external traffic to frontend microservice via Traefik Gateway
+# ==============================================================================
+
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: frontend-route
   namespace: default
   labels:
-    app.kubernetes.io/name: frontend-route
-    app.kubernetes.io/part-of: online-boutique
+    app.kubernetes.io/name: online-boutique-frontend
 spec:
   parentRefs:
-    - name: boutique-gateway
-      namespace: default
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
   hostnames:
-    - "ecommerce.devopsatolyesi.com"
+    - "student100-app1.devopsatolyesi.com"
+    - "student100-k8s-app1.devopsatolyesi.com"
+    - "student100-kind.devopsatolyesi.com"
+    - "ecommerce-kind.devopsatolyesi.com"
     - "localhost"
+    - "127.0.0.1"
   rules:
     - matches:
         - path:
@@ -21,4 +30,4 @@ spec:
       backendRefs:
         - name: frontend
           port: 80
-          weight: 100
+          weight: 1

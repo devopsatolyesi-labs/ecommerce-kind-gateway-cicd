@@ -26,6 +26,13 @@ RUN curl -fsSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s
 # Install Helm
 RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+# Install SonarScanner CLI
+RUN apt-get update && apt-get install -y --no-install-recommends unzip && \
+    curl -fsSL -o /tmp/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610-linux-x64.zip && \
+    unzip -q /tmp/sonar-scanner.zip -d /opt && \
+    ln -s /opt/sonar-scanner-6.2.1.4610-linux-x64/bin/sonar-scanner /usr/local/bin/sonar-scanner && \
+    rm -rf /tmp/sonar-scanner.zip /var/lib/apt/lists/*
+
 USER jenkins
 
 # Pre-install Jenkins plugins
