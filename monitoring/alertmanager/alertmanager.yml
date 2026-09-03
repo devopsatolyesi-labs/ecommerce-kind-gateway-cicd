@@ -1,0 +1,25 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'telegram-channel'
+
+receivers:
+  - name: 'telegram-channel'
+    telegram_configs:
+      # Öğrenci / Eğitmen Bot Token ve Chat ID'sini buraya girer
+      - bot_token: 'REPLACE_WITH_TELEGRAM_BOT_TOKEN'
+        chat_id: 0
+        send_resolved: true
+        parse_mode: 'HTML'
+        message: |
+          <b>🚨 [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}</b>
+          
+          <b>Önem:</b> <code>{{ .CommonLabels.severity }}</code>
+          <b>Özet:</b> {{ .CommonAnnotations.summary }}
+          <b>Detay:</b> {{ .CommonAnnotations.description }}
+          <b>Zaman:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}

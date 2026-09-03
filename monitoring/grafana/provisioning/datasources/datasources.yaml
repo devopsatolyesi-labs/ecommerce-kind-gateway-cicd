@@ -7,3 +7,10 @@ datasources:
     url: http://training-prometheus:9090
     isDefault: true
     editable: false
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://training-loki:3100
+    isDefault: false
+    editable: false

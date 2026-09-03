@@ -23,6 +23,11 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:19093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
     networks:
       - training-net
 
@@ -62,6 +67,32 @@ services:
     networks:
       - training-net
 
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: training-loki
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - training-net
+
+  promtail:
+    image: grafana/promtail:3.1.0
+    container_name: training-promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/jenkins_home:/var/jenkins_home:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - training-net
+
   grafana:
     image: grafana/grafana:11.2.0
     container_name: training-grafana
@@ -85,6 +116,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
 
 networks:
   training-net:
