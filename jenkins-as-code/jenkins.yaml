@@ -64,3 +64,19 @@ jobs:
           }
         }
       }
+      pipelineJob('Online-Boutique-Blue-Green-Switch') {
+        description('Interactive Blue-Green Traffic Cutover and Canary Shifting via Kubernetes Gateway API')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile.bluegreen')
+          }
+        }
+      }

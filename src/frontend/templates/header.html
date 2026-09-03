@@ -49,9 +49,9 @@
 <body>
     <header>
         {{ if $.frontendMessage }}
-        <div class="navbar">
+        <div class="navbar" style="{{ if $.banner_color }}background-color: {{ $.banner_color }} !important; color: white !important; font-weight: bold; padding: 10px 0;{{ end }}">
             <div class="container d-flex justify-content-center">
-                <div class="h-free-shipping">{{ $.frontendMessage }}</div>
+                <div class="h-free-shipping" style="font-size: 1.1rem; letter-spacing: 0.5px;">{{ $.frontendMessage }}</div>
             </div>
         </div>
         {{ end }}

@@ -1,0 +1,131 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'STRATEGY',
+            choices: [
+                'GREEN (100% Green - Cutover to New Version)',
+                'BLUE (100% Blue - Instant Rollback)',
+                'CANARY (80% Blue / 20% Green)'
+            ],
+            description: 'Select Gateway API Traffic Routing Strategy'
+        )
+    }
+
+    environment {
+        KUBECONFIG = '/var/jenkins_home/.kube/config'
+    }
+
+    stages {
+        stage('1. Validate Kubernetes & Gateway API') {
+            steps {
+                sh '''
+                    echo "Checking Kubernetes Cluster and Traefik Gateway API..."
+                    kubectl get gateway,gatewayclass -A
+                    kubectl get deployments -l app -n default
+                '''
+            }
+        }
+
+        stage('2. Apply Traffic Routing Strategy') {
+            steps {
+                script {
+                    def blueWeight = 100
+                    def greenWeight = 0
+                    def statusMsg = ""
+
+                    if (params.STRATEGY.startsWith('GREEN')) {
+                        blueWeight = 0
+                        greenWeight = 100
+                        statusMsg = "Cutover to GREEN (100% Traffic)"
+                    } else if (params.STRATEGY.startsWith('CANARY')) {
+                        blueWeight = 80
+                        greenWeight = 20
+                        statusMsg = "Canary Deployment (80% Blue / 20% Green)"
+                    } else {
+                        blueWeight = 100
+                        greenWeight = 0
+                        statusMsg = "Rollback to BLUE (100% Traffic)"
+                    }
+
+                    echo ">>> Applying Strategy: ${statusMsg} (Blue: ${blueWeight}%, Green: ${greenWeight}%)"
+
+                    sh """
+                        # Ensure both Blue and Green workloads exist
+                        kubectl apply -f gateway-api/blue-green/01-blue-green-services.yaml
+
+                        # Generate dynamic HTTPRoute with selected weights
+                        cat << 'EOF' | kubectl apply -f -
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: frontend-route
+  namespace: default
+  labels:
+    app.kubernetes.io/name: online-boutique-frontend
+spec:
+  parentRefs:
+    - name: traefik-gateway
+      namespace: traefik
+      sectionName: web
+  hostnames:
+    - "student100-app1.devopsatolyesi.com"
+    - "student100-k8s-app1.devopsatolyesi.com"
+    - "student100-kind.devopsatolyesi.com"
+    - "localhost"
+    - "127.0.0.1"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: frontend-blue
+          port: 80
+          weight: ${blueWeight}
+        - name: frontend-green
+          port: 80
+          weight: ${greenWeight}
+EOF
+                        echo "Gateway API HTTPRoute successfully updated!"
+                        kubectl describe httproute frontend-route -n default
+                    """
+                }
+            }
+        }
+
+        stage('3. Smoke Test & Health Check') {
+            steps {
+                sh '''
+                    echo "Testing Gateway API routing after traffic shift..."
+                    sleep 3
+                    curl -s -I -H "Host: student100-app1.devopsatolyesi.com" http://ecommerce-kind-cluster-control-plane:30080/ | head -n 5
+                '''
+            }
+        }
+
+        stage('4. Annotate Grafana Timeline') {
+            steps {
+                sh """
+                    echo "Sending deployment annotation to Grafana..."
+                    curl -s -u admin:BilgincIT454 -X POST http://training-grafana:3000/api/annotations \
+                        -H "Content-Type: application/json" \
+                        -d '{"time": ${System.currentTimeMillis()}, "text": "Traffic Shift: ${params.STRATEGY}", "tags": ["deployment", "blue-green", "gateway-api"]}' \
+                        || true
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "=========================================================================="
+            echo "SUCCESS: Gateway API Blue-Green traffic routing updated to: ${params.STRATEGY}"
+            echo "=========================================================================="
+        }
+        failure {
+            echo "ERROR: Failed to update Gateway API traffic routing!"
+        }
+    }
+}
