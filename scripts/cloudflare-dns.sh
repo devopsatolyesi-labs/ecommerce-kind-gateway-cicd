@@ -20,6 +20,10 @@ PROXIED="${CLOUDFLARE_PROXIED:-true}"
 api="https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/dns_records"
 auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" -H 'Content-Type: application/json')
 
+zone_info=$(curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}")
+zone_name=$(jq -r '.result.name // empty' <<<"$zone_info")
+log "Connected to Cloudflare Zone: ${zone_name} (ID: ${CLOUDFLARE_ZONE_ID})"
+
 services=(
   cockpit
   jenkins
