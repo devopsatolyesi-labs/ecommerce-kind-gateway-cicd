@@ -27,12 +27,13 @@ pipeline {
 
         stage('2. Unit Tests & Code Coverage') {
             steps {
-                dir('src/frontend') {
-                    sh '''
-                        echo "Running Go Unit Tests & Coverage..."
-                        go test -v -cover -coverprofile=coverage.out ./... || true
-                    '''
-                }
+                sh '''
+                    echo "=== Running Go Unit Tests across Microservices ==="
+                    cd src/frontend && go test -v -cover ./...
+                    cd ../productcatalogservice && go test -v ./...
+                    cd ../shippingservice && go test -v ./...
+                    echo "All Go microservice unit tests passed successfully!"
+                '''
             }
         }
 
@@ -66,8 +67,12 @@ pipeline {
         stage('5. Container Security Scan (Trivy)') {
             steps {
                 sh """
-                    echo "Running Trivy vulnerability scanner on built image..."
-                    trivy image --severity HIGH,CRITICAL --exit-code 0 online-boutique-frontend:${IMAGE_TAG} 2>/dev/null || true
+                    echo "Running Trivy container vulnerability scanner..."
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --format table \
+                        online-boutique-frontend:${IMAGE_TAG} || true
+                    echo "Trivy security scan complete."
                 """
             }
         }
@@ -103,6 +108,20 @@ pipeline {
             steps {
                 sh """
                     ./scripts/validate.sh
+                """
+            }
+        }
+
+        stage('9. Automated Load & Performance Test (K6)') {
+            steps {
+                sh """
+                    echo "Starting automated K6 performance & load testing against Gateway API..."
+                    docker run --rm -i \
+                        --network kind \
+                        -e TARGET_URL="http://ecommerce-kind-cluster-control-plane:30080" \
+                        -e HOST_HEADER="student100-app1.devopsatolyesi.com" \
+                        grafana/k6:0.53.0 run - < tests/k6-load-test.js || true
+                    echo "K6 load testing completed. Check Grafana for RPS & Latency metrics."
                 """
             }
         }
