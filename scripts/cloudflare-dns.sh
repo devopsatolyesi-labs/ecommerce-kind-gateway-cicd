@@ -31,6 +31,7 @@ services=(
   app1
   k8s-app1
   kind
+  harbor
 )
 
 lookup_id() {
