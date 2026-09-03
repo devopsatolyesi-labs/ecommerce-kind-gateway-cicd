@@ -19,7 +19,7 @@ else
 fi
 
 log_info "Deploying Google Online Boutique microservices..."
-kubectl apply -f "${ROOT_DIR}/release/kubernetes-manifests.yaml"
+kubectl apply -f "${ROOT_DIR}/kubernetes-manifests/"
 
 log_info "Applying Traefik Gateway API HTTPRoute for Frontend..."
 kubectl apply -f "${ROOT_DIR}/gateway-api/03-httproute.yaml"
