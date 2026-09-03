@@ -48,11 +48,50 @@ flowchart TD
 
 ---
 
-## 🚨 1. Alarmlar Nereye Gönderilir? (Slack, Teams, E-Mail, Discord)
+## 🚨 1. Alarmlar Nereye Gönderilir? (Telegram, Slack, Teams, E-Mail)
 
-Prometheus'un tespit ettiği anomaliler **Alertmanager** üzerinden farklı kanallara dağıtılır. `monitoring/alertmanager/config.yml` dosyasını düzenleyerek istediğiniz kanalı bağlayabilirsiniz:
+Prometheus'un tespit ettiği anomaliler **Alertmanager** üzerinden farklı kanallara dağıtılır. Sistemde hazır olarak `monitoring/alertmanager/alertmanager.yml` yapılandırılmıştır:
 
-### A) Slack Entegrasyonu (En Popüler DevOps Standardı)
+### A) Telegram Entegrasyonu (Hızlı, Pratik & Mobil Bildirim)
+Telegram üzerinden anlık alarmları telefonunuza veya ekibinize göndermek için:
+1. Telegram'da **@BotFather** botunu açın ve `/newbot` komutuyla yeni bir bot oluşturun. Size verilen **Bot Token**'ı kopyalayın.
+2. Botunuza bir mesaj atın (veya botu bir Telegram grubuna ekleyin).
+3. Chat ID'nizi öğrenmek için Telegram'da **@userinfobot**'a `/start` yazın.
+4. `monitoring/alertmanager/alertmanager.yml` dosyasını açıp değerleri girin:
+```yaml
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'severity']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'telegram-channel'
+
+receivers:
+  - name: 'telegram-channel'
+    telegram_configs:
+      - bot_token: '123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ' # BotFather'dan aldığınız token
+        chat_id: 987654321                             # Sizin veya grubun Chat ID'si
+        send_resolved: true
+        parse_mode: 'HTML'
+        message: |
+          <b>🚨 [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}</b>
+          
+          <b>Önem:</b> <code>{{ .CommonLabels.severity }}</code>
+          <b>Özet:</b> {{ .CommonAnnotations.summary }}
+          <b>Detay:</b> {{ .CommonAnnotations.description }}
+          <b>Zaman:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+```
+5. Ayarları yeniden yüklemek için:
+```bash
+curl -X POST http://127.0.0.1:19093/-/reload
+```
+
+---
+
+### B) Slack Entegrasyonu (Kurumsal DevOps Standardı)
 Slack'te bir **Incoming Webhook** oluşturun ve Alertmanager yapılandırmasına ekleyin:
 
 ```yaml
