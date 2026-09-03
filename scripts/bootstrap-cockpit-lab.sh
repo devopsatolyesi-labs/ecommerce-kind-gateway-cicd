@@ -122,8 +122,8 @@ kubectl cluster-info
 # ------------------------------------------------------------------------------
 # 4. Deploy Traefik v3 Gateway API Controller
 # ------------------------------------------------------------------------------
-log_info "3/7 Deploying Kubernetes Gateway API Standard CRDs & Traefik v3..."
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+log_info "3/7 Deploying Kubernetes Gateway API Standard CRDs (v1.5.1) & Traefik v3..."
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/standard-install.yaml
 
 helm repo add traefik https://traefik.github.io/charts --force-update
 helm repo update
