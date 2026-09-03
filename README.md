@@ -14,6 +14,8 @@ Laboratuvarda her öğrenci için tanımlanan standart alt alan adları (`studen
 | **Jenkins CI/CD** | Dağıtım ve boru hattı otomasyonu (JDK 21) | `https://student100-jenkins.devopsatolyesi.com` | `admin` / `BilgincIT454` |
 | **SonarQube** | Statik kod kalitesi ve güvenlik kapısı (v10) | `https://student100-sonarqube.devopsatolyesi.com` | `admin` / `BilgincIT454` |
 | **Harbor Registry** | Özel OCI konteyner imaj deposu (v2.12) | `https://student100-harbor.devopsatolyesi.com` | `admin` / `BilgincIT454` |
+| **Prometheus Monitoring** | Metrik toplama ve alarm kuralları | `https://student100-prometheus.devopsatolyesi.com` | Herkese Açık / Dahili |
+| **Grafana Dashboards** | Gateway API panelleri ve görselleştirme | `https://student100-grafana.devopsatolyesi.com` | `admin` / `BilgincIT454` |
 | **E-Commerce Storefront** | Gateway API üzerinden canlı mağaza | `https://student100-app1.devopsatolyesi.com` | Herkese Açık |
 
 ---
@@ -281,6 +283,49 @@ kubectl get httproutes -n default
 
 # HTTP yanıt kodunu test etme (HTTP/2 200 döner)
 curl -s -I https://student100-app1.devopsatolyesi.com/ | head -n 5
+```
+
+---
+
+### Adım 7: Prometheus & Grafana ile Gateway API İzleme ve Alarmlar
+
+Laboratuvar ortamında **Prometheus**, **Alertmanager**, **Node Exporter** ve **Grafana** servisleri otomatik olarak yapılandırılmıştır.
+
+```bash
+# İzleme stack'ini başlatma (monitoring/ dizini altında):
+cd ~/ecommerce-kind-gateway-cicd/monitoring
+sudo docker compose up -d
+```
+
+#### 🌐 Yol A: Grafana & Prometheus Arayüzünden İzleme
+1. **Grafana Dashboard:**
+   * Açın: `https://student<ID>-grafana.devopsatolyesi.com`
+   * Giriş: `admin` / `BilgincIT454`
+   * Sol menüden **Dashboards** ➔ **DevOps Capstone** klasörüne tıklayın.
+   * **`Online Boutique — Traefik Gateway API & Ingress Dashboard`** panelini açın.
+   * Burada anlık olarak:
+     * **Throughput (Req/s):** Gateway üzerinden geçen saniyelik istek hacmi.
+     * **HTTP Status Codes:** 2xx başarı, 4xx istemci ve 5xx sunucu hata oranları.
+     * **Request Latency (p50, p95, p99):** Milisaniye cinsinden gecikme süreleri.
+     * **Host Memory Utilization:** Sunucu RAM tüketim göstergesi.
+2. **Prometheus & Alarmlar:**
+   * Açın: `https://student<ID>-prometheus.devopsatolyesi.com/alerts`
+   * Tanımlı ve aktif çalışan alarm kurallarını inceleyin:
+     * `GatewayHighErrorRate`: HTTP 5xx hata oranı %5'i aşarsa tetiklenir (Severity: Critical).
+     * `GatewayLatencyHigh`: p95 gecikmesi 500ms'yi geçerse tetiklenir (Severity: Warning).
+     * `ServiceInstanceDown`: Servis erişilemez olursa 1 dakika içinde alarm üretir.
+     * `HostMemoryLow`: Boş RAM %15'in altına düşerse uyarır.
+
+#### 💻 Yol B: Terminalden Metrik ve Alarm Sorgulama
+```bash
+# Prometheus üzerindeki aktif alarmları listeleme:
+curl -s http://127.0.0.1:19090/api/v1/rules | jq '.data.groups[].rules[].name'
+
+# Traefik Gateway API üzerinden geçen toplam istek sayısını sorgulama:
+curl -s 'http://127.0.0.1:19090/api/v1/query?query=sum(traefik_entrypoint_requests_total)' | jq .
+
+# Grafana'daki hazır panelleri listeleme:
+curl -s -u admin:BilgincIT454 http://127.0.0.1:13000/api/search | jq '.[].title'
 ```
 
 ---
