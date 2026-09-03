@@ -42,18 +42,36 @@ cd ecommerce-kind-gateway-cicd
 
 ---
 
-### Adım 2: SonarQube Hazırlığı & PAT Token Oluşturma
+### Adım 2: SonarQube (v10 Community) Başlatma & PAT Token Oluşturma
 
-1. Tarayıcınızda SonarQube panelini açın:
+1. SonarQube konteynerini (Güncel kararlı **SonarQube 10-Community**) başlatın:
+```bash
+sudo sysctl -w vm.max_map_count=262144
+sudo docker network create training-net 2>/dev/null || true
+
+sudo docker run -d \
+    --name training-sonarqube \
+    --network training-net \
+    --restart unless-stopped \
+    -p 127.0.0.1:19000:9000 \
+    -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
+    sonarqube:10-community
+```
+
+2. Tarayıcınızda SonarQube panelini açın:
    * **URL:** `https://student<ID>-sonarqube.devopsatolyesi.com`
-   * **Kullanıcı:** `admin` | **Şifre:** `BilgincIT454`
-2. Jenkins'in kod analizi yapabilmesi için bir erişim belirteci (token) oluşturun:
-   * **My Account** ➔ **Security** ➔ **Generate Tokens** sekmesine gidin.
-   * İsim olarak `jenkins-ci-token` girin ve token'ı kopyalayın.
-3. SonarQube üzerinde `online-boutique-frontend` anahtarıyla bir proje açın (veya CLI üzerinden otomatik oluşturulmasına izin verin).
+   * **Kullanıcı:** `admin` | **Şifre:** `admin` (Yeni şifre belirleyin, örn: `BilgincIT454`)
 
-> **İpucu:** Terminalden hızlıca token oluşturmak için:
+3. Proje oluşturun ve Jenkins için erişim belirteci (PAT) üretin:
+> **Hızlı CLI Komutu:**
 > ```bash
+> # Şifre değiştirme
+> curl -s -u admin:admin -X POST 'http://127.0.0.1:19000/api/users/change_password?login=admin&previousPassword=admin&password=BilgincIT454'
+>
+> # Proje oluşturma
+> curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/projects/create?name=Online+Boutique&project=online-boutique-frontend'
+>
+> # Token üretme
 > curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-ci-token'
 > ```
 
