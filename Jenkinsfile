@@ -7,8 +7,8 @@ pipeline {
         IMAGE_NAME        = 'online-boutique-frontend'
         IMAGE_TAG         = "${BUILD_NUMBER}"
         HARBOR_CREDS_ID   = 'harbor-credentials'
-        SONAR_HOST_URL    = env.SONAR_HOST_URL ?: 'http://training-sonarqube:9000'
-        KUBECONFIG        = env.KUBECONFIG ?: '/var/jenkins_home/.kube/config'
+        SONAR_HOST_URL    = 'http://training-sonarqube:9000'
+        KUBECONFIG        = '/var/jenkins_home/.kube/config'
     }
 
     options {
