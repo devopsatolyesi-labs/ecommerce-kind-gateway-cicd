@@ -32,6 +32,8 @@ services=(
   k8s-app1
   kind
   harbor
+  prometheus
+  grafana
 )
 
 lookup_id() {
