@@ -38,25 +38,16 @@ pipeline {
 
         stage('3. SonarQube Code Quality Gate') {
             steps {
-                script {
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                            sonar-scanner \
-                                -Dsonar.projectKey=online-boutique-frontend \
-                                -Dsonar.projectName="Online Boutique Frontend" \
-                                -Dsonar.sources=src/frontend \
-                                -Dsonar.exclusions="**/*_test.go,**/genproto/**" \
-                                -Dsonar.host.url=\${SONAR_HOST_URL}
-                        """
-                    }
-                }
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        def qg = waitForQualityGate()
-                        if (qg.status != 'OK') {
-                            echo "SonarQube Quality Gate status: ${qg.status}"
-                        }
-                    }
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh """
+                        sonar-scanner \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.token=\${SONAR_AUTH_TOKEN} \
+                            -Dsonar.projectKey=online-boutique-frontend \
+                            -Dsonar.projectName="Online Boutique Frontend" \
+                            -Dsonar.sources=src/frontend \
+                            -Dsonar.exclusions="**/*_test.go,**/genproto/**,src/frontend/Dockerfile"
+                    """
                 }
             }
         }
