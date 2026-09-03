@@ -25,7 +25,8 @@ Laboratuvarda her öğrenci için tanımlanan standart alt alan adları (`studen
 Bu platform, öğrencilerin kurumsal bir DevOps mühendisi seviyesine ulaşabilmesi için 4 temel ileri düzey kılavuzla donatılmıştır:
 
 * 🔵🟢 **[Blue-Green Dağıtım Kılavuzu](docs/BLUE_GREEN_LAB.md):** Traefik Gateway API ile Mavi (`v1.0.0`) ve Yeşil (`v2.0.0`) temalar arasında sıfır kesintili trafik geçişi ve anında geri alma (Instant Rollback).
-* 🧪 **[Uygulamalı Öğrenci Alıştırmaları](docs/LAB_EXERCISES.md):** Test hatası enjeksiyonu, Canary rotaları, Telegram alarm testi ve LogQL aramaları içeren 6 gerçekçi alıştırma.
+* 🔄 **[Üretim Rollback Stratejileri Kılavuzu](docs/ROLLBACK_STRATEGIES_LAB.md):** 4 Farklı Geri Alma Yöntemi: Gateway API Trafik Kesimi, `kubectl rollout undo`, Harbor İmaj Sabitleme ve Git Revert.
+* 🧪 **[Uygulamalı Öğrenci Alıştırmaları](docs/LAB_EXERCISES.md):** Test hatası enjeksiyonu, Canary rotaları, Telegram alarm testi, LogQL aramaları ve Rollback tatbikatı içeren 7 gerçekçi alıştırma.
 * 🏛️ **[Mimari Kararlar & Tasarım Kılavuzu](docs/ARCHITECTURE.md):** Neden Gateway API? Neden JCasC? Neden Harbor ve Prometheus+Loki?
 * 📊 **[Gözlemlenebilirlik & Monitoring Kılavuzu](monitoring/MONITORING_GUIDE.md):** Telegram/Slack alarmları, Grafana Playlists, Snapshots, Annotations ve Loki log analitiği.
 

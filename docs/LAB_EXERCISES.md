@@ -122,3 +122,16 @@ Traefik Gateway API üzerinden canlı trafiği tek tıkla kesintisiz olarak Mavi
    * Sayfa başlığı ve teması masmavi `v1.0.0` halinden, zümrüt yeşili `v2.0.0` yeni nesil temaya anında dönecektir.
    * Grafana Dashboard'da geçiş anında mor bir **Deployment Annotation** belirecektir.
 5. Detaylı yönergeler için [docs/BLUE_GREEN_LAB.md](file:///Users/hakan/devops-workspace/ecommerce-kind-gateway-cicd/docs/BLUE_GREEN_LAB.md) kılavuzuna bakın.
+
+---
+
+## 🎯 Alıştırma 7: Üretim Seviyesinde Rollback ve Acil Durum Kurtarma
+
+### Hedef:
+Canlıya çıkan yeşil sürümde hata simülasyonu yaparak sistemi 4 farklı stratejiyle (Gateway API, `rollout undo`, Harbor imaj etiketi ve Git revert) önceki stabil sürüme geri döndürmek.
+
+### Adımlar:
+1. Jenkins üzerinden **`Online-Boutique-Blue-Green-Switch`** işinde **`BLUE (100% Blue - Instant Rollback)`** seçip 1 saniyede trafiği geri alın.
+2. Terminalden `kubectl rollout undo deployment/frontend -n default` komutuyla Kubernetes seviyesinde geri alma deneyimi kazanın.
+3. Harbor panelinden önceki imaj etiketini (`:1`) inceleyip `kubectl set image` ile imaj sabitleme yapın.
+4. Detaylı senaryo ve adımlar için [docs/ROLLBACK_STRATEGIES_LAB.md](file:///Users/hakan/devops-workspace/ecommerce-kind-gateway-cicd/docs/ROLLBACK_STRATEGIES_LAB.md) kılavuzuna bakın.
