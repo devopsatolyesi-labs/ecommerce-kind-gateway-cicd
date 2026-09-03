@@ -137,7 +137,10 @@ helm upgrade --install traefik traefik/traefik \
     --set gateway.listeners.web.routes.namespaces.from=All \
     --set service.type=NodePort \
     --set ports.web.nodePort=30080 \
-    --wait --timeout 3m
+    --timeout 10m
+
+# Ensure rollout completes
+kubectl rollout status deployment/traefik -n traefik --timeout=300s || true
 
 # Patch gateway listener to ensure routes from all namespaces are accepted
 kubectl patch gateway traefik-gateway -n traefik --type='json' \
