@@ -25,7 +25,7 @@ credentials:
               scope: GLOBAL
               id: "sonar-token"
               description: "SonarQube Global Analysis Token"
-              secret: "${SONAR_TOKEN:-squ_bfa0de4cb146a6a88776e9cd108c03442dc06146}"
+              secret: "${SONAR_TOKEN:-squ_e32c82f16836b320a3821625f5ab1763b82d1d73}"
           - usernamePassword:
               scope: GLOBAL
               id: "harbor-credentials"
