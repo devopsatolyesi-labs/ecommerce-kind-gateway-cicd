@@ -328,6 +328,8 @@ curl -s 'http://127.0.0.1:19090/api/v1/query?query=sum(traefik_entrypoint_reques
 curl -s -u admin:BilgincIT454 http://127.0.0.1:13000/api/search | jq '.[].title'
 ```
 
+> 📘 **Ayrıntılı Gözlemlenebilirlik Kılavuzu:** Slack/Teams alarm entegrasyonu, Grafana Playlist (TV modu), Snapshot paylaşımı, Annotations ve manuel panel oluşturma için [monitoring/MONITORING_GUIDE.md](file:///Users/hakan/devops-workspace/ecommerce-kind-gateway-cicd/monitoring/MONITORING_GUIDE.md) dokümanını inceleyin.
+
 ---
 
 ## 📊 Hangi Projede Hangi İzleme (Monitoring) Kullanılmalı?
