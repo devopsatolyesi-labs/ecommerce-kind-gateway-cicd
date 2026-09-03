@@ -1,156 +1,145 @@
 # Google Online Boutique — Cloud-Native CI/CD & Traefik v3 Gateway API Platform
 
-Bu proje, Google Cloud'un 10 mikroservisten oluşan **Online Boutique** referans e-ticaret mimarisini temel alan; klasik Nginx Ingress yerine yeni nesil **Kubernetes Gateway API (Traefik v3)** ile dış dünyaya açılan, uçtan uca **Jenkins**, **SonarQube**, **Trivy** ve **Harbor** entegrasyonuna sahip kurumsal bir DevOps & DevSecOps teslimat platformudur.
+Bu proje, Google Cloud'un mikroservis mimarisine sahip **Online Boutique** referans e-ticaret uygulamasının; klasik Ingress yerine yeni nesil **Kubernetes Gateway API (Traefik v3)** ile dış dünyaya açıldığı, **Jenkins as Code (JCasC)** ve **SonarQube** entegrasyonuyla otomatik derlenip dağıtıldığı kurumsal bir DevOps laboratuvarıdır.
 
 ---
 
-## 🏛️ Mimari ve Bileşenler
+## 🏛️ Öğrenci Ortamı & Canlı Servis Portalı
+
+Laboratuvarda her öğrenci için tanımlanan standart alt alan adları (`student<ID>`):
+
+| Servis Adı | Açıklama | Canlı Erişim URL (Örnek: student100) |
+|---|---|---|
+| **Cockpit Web Terminal** | Linux ortam yönetimi ve web terminali | `https://student100-cockpit.devopsatolyesi.com` |
+| **Jenkins CI/CD** | JCasC ile yapılandırılmış dağıtım hattı | `https://student100-jenkins.devopsatolyesi.com` |
+| **SonarQube** | Statik kod kalitesi ve güvenlik kapısı | `https://student100-sonarqube.devopsatolyesi.com` |
+| **E-Commerce Storefront** | Gateway API üzerinden canlı uygulama | `https://student100-app1.devopsatolyesi.com` |
+
+---
+
+## 🎯 Adım Adım Öğrenci Laboratuvar Akışı
+
+Bu laboratuvarda uygulama kümeye statik olarak kurulmaz; öğrenci Jenkins üzerinde CI/CD boru hattını çalıştırarak uygulamanın derlenmesini, SonarQube'dan geçmesini ve Gateway API ile canlıya alınmasını sağlar.
 
 ```mermaid
-flowchart TD
-    subgraph SCM [Kaynak Kod & Sürüm Kontrolü]
-        GIT[Git Repository / GitHub]
-    end
-
-    subgraph CI_CD [Sürekli Entegrasyon & Güvenlik Hattı (Jenkins)]
-        STAGE1[1. SCM Checkout]
-        STAGE2[2. Go Unit Tests & Coverage]
-        STAGE3[3. SonarQube Quality Gate]
-        STAGE4[4. Multi-Stage Docker Build]
-        STAGE5[5. Trivy CVE Security Scan]
-        STAGE6[6. Harbor Registry Push]
-    end
-
-    subgraph K8S [Kubernetes / Kind Kümesi]
-        subgraph GATEWAY [Traefik v3 Gateway API Katmanı]
-            GC[GatewayClass: traefik]
-            GW[Gateway: boutique-gateway]
-            ROUTE[HTTPRoute: frontend-route]
-        end
-
-        subgraph MICROSERVICES [Online Boutique Servisleri]
-            FRONTEND[Frontend Web Service]
-            CART[Cart Service - Redis]
-            CATALOG[Product Catalog Service]
-            CURRENCY[Currency Service]
-            PAYMENT[Payment Service]
-            SHIPPING[Shipping Service]
-            CHECKOUT[Checkout Service]
-            EMAIL[Email Service]
-            RECOM[Recommendation Service]
-            AD[Ad Service]
-        end
-    end
-
-    GIT --> STAGE1 --> STAGE2 --> STAGE3 --> STAGE4 --> STAGE5 --> STAGE6
-    STAGE6 -->|Deploy| K8S
-
-    CLIENT[Kullanıcı / Tarayıcı] -->|ecommerce.devopsatolyesi.com| GW
-    GW --> ROUTE --> FRONTEND
-    FRONTEND --> CART & CATALOG & CURRENCY & CHECKOUT & SHIPPING & RECOM & AD
+flowchart LR
+    A[1. Öğrenci Repoyu Çeker] --> B[2. SonarQube Tanımları & Token]
+    B --> C[3. Jenkins Kurulumu & JCasC]
+    C --> D[4. Jenkins Pipeline Build Now]
+    D --> E[5. Gateway API ile Uygulama Canlı!]
 ```
 
 ---
 
-## 🌟 Neden Kubernetes Gateway API & Traefik v3?
+### Adım 1: Projeyi Klonlama
 
-Geleneksel `Ingress (networking.k8s.io/v1)` kaynakları sınırlı özellik setine sahiptir ve yönlendirme (routing), başlık manipülasyonu, yetkilendirme gibi gelişmiş ihtiyaçlar için controller'a özel karmaşık annotation'lara bağımlıdır.
+Cockpit terminalinize (`student` kullanıcısı ile) giriş yapın ve herkese açık (public) repoyu klonlayın:
 
-**Kubernetes Gateway API (`gateway.networking.k8s.io/v1`)** ise Kubernetes SIG-Network tarafından tasarlanan yeni nesil standarttır:
-* **Rol Tabanlı Ayrım:** Altyapı ekipleri `GatewayClass` ve `Gateway` tanımlarken; uygulama ekipleri bağımsız olarak `HTTPRoute`, `GRPCRoute` veya `TCPRoute` yönetebilir.
-* **Traefik v3 Entegrasyonu:** Traefik v3, Gateway API spesifikasyonunu yerel (native) olarak destekler; zengin dahili web arayüzü (Dashboard), otomatik yönlendirme ve Prometheus metrikleri sunar.
-* **Standart Taşınabilirlik:** Vendor-lockin olmaksızın farklı bulut sağlayıcıları ve gateway controller'ları arasında aynı route tanımları çalışır.
+```bash
+git clone https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git
+cd ecommerce-kind-gateway-cicd
+```
 
 ---
 
-## 🚀 Hızlı Başlangıç & Adım Adım Kurulum
+### Adım 2: SonarQube Hazırlığı & PAT Token Oluşturma
 
-### 1. Ön Koşullar
-* Çalışan bir Kubernetes kümesi (`kind`, `k3s`, `minikube` veya `EKS/GKE`)
-* `kubectl` (v1.28+)
-* `helm` (v3.12+)
-* `curl` ve `jq`
+1. Tarayıcınızda SonarQube panelini açın:
+   * **URL:** `https://student<ID>-sonarqube.devopsatolyesi.com`
+   * **Kullanıcı:** `admin` | **Şifre:** `BilgincIT454`
+2. Jenkins'in kod analizi yapabilmesi için bir erişim belirteci (token) oluşturun:
+   * **My Account** ➔ **Security** ➔ **Generate Tokens** sekmesine gidin.
+   * İsim olarak `jenkins-ci-token` girin ve token'ı kopyalayın.
+3. SonarQube üzerinde `online-boutique-frontend` anahtarıyla bir proje açın (veya CLI üzerinden otomatik oluşturulmasına izin verin).
 
-### 2. Traefik v3 ve Gateway API Kurulumu
-Kubernetes Gateway API resmi standart CRD'lerini ve Traefik v3 controller'ını tek komutla kurun:
+> **İpucu:** Terminalden hızlıca token oluşturmak için:
+> ```bash
+> curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-ci-token'
+> ```
+
+---
+
+### Adım 3: Jenkins as Code (JCasC) ile Jenkins'i Başlatma
+
+Jenkins'in eklentilerle, hazır pipeline işiyle (`Online-Boutique-Gateway-CI-CD`) ve SonarQube kimlik bilgileriyle kurulum sihirbazına gerek kalmadan ayağa kalkması için:
 
 ```bash
-chmod +x scripts/*.sh
-./scripts/setup-traefik-gateway.sh
+# 1. JCasC Jenkins imajını derleyin (Kubectl, Docker CLI, SonarScanner dahil)
+sudo docker build -t ecommerce-jenkins:latest jenkins-as-code/
+
+# 2. Kind kümesi erişimi için kubeconfig'i hazırlayın
+sudo mkdir -p /var/jenkins_home/casc_configs /var/jenkins_home/.kube
+sudo kind get kubeconfig --internal --name ecommerce-kind-cluster | sudo tee /var/jenkins_home/.kube/config >/dev/null
+sudo cp jenkins-as-code/jenkins.yaml /var/jenkins_home/casc_configs/jenkins.yaml
+sudo chown -R 1000:1000 /var/jenkins_home
+
+# 3. Jenkins konteynerini çalıştırın
+sudo docker run -d \
+    --name training-jenkins \
+    --restart unless-stopped \
+    -p 127.0.0.1:18080:8080 \
+    -p 127.0.0.1:50000:50000 \
+    -e CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs/jenkins.yaml \
+    -e SONAR_TOKEN="<SONARQUBE_TOKEN>" \
+    -e SONAR_HOST_URL="http://training-sonarqube:9000" \
+    -v /var/jenkins_home:/var/jenkins_home \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    ecommerce-jenkins:latest
+
+# 4. Jenkins'i 'kind' ve 'training-net' ağlarına bağlayın
+sudo docker network connect kind training-jenkins
+sudo docker network connect training-net training-jenkins
 ```
 
-Kurulumu doğrulayın:
+---
+
+### Adım 4: Jenkins Pipeline'ını Çalıştırma
+
+1. Tarayıcınızda Jenkins'e giriş yapın:
+   * **URL:** `https://student<ID>-jenkins.devopsatolyesi.com`
+   * **Kullanıcı:** `admin` (veya `student`) | **Şifre:** `BilgincIT454`
+2. Dashboard'da hazır bekleyen **`Online-Boutique-Gateway-CI-CD`** işine tıklayın.
+3. Sol menüden **"Build Now"** butonuna basın.
+
+---
+
+### Adım 5: Pipeline Aşamalarını İzleme
+
+Pipeline şu 8 aşamayı sırasıyla icra eder:
+
+1. **1. Checkout SCM:** GitHub'daki açık kaynak repodan son kodları çeker.
+2. **2. Unit Tests & Code Coverage:** Go birim testlerini çalıştırır.
+3. **3. SonarQube Code Quality Gate:** `sonar-scanner` ile statik kod analizini `http://training-sonarqube:9000` adresine gönderir ve kalite denetimini tamamlar.
+4. **4. Docker Multi-Stage Build:** `src/frontend` için optimize edilmiş konteyner imajını üretir.
+5. **5. Container Security Scan (Trivy):** Üretilen imajı güvenlik açıkları (CVE) için tarar.
+6. **6. Kind Image Load:** İmajı Kind Kubernetes kümesine yükler (`kind load docker-image`).
+7. **7. Deploy to Kubernetes (Gateway API):** Online Boutique mikroservislerini ve Traefik v3 `HTTPRoute` tanımlarını kümeye uygular.
+8. **8. Automated Smoke Test:** Uçtan uca sağlık denetimi yapar.
+
+---
+
+### Adım 6: Canlı E-Ticaret Uygulamasını Doğrulama
+
+Pipeline başarıyla tamamlandığında (`SUCCESS`), e-ticaret mağazanız Traefik Gateway API üzerinden Cloudflare ile güvenli (HTTPS) olarak yayına girer:
+
+🌐 **Canlı Uygulama:** `https://student<ID>-app1.devopsatolyesi.com`
+
+Tarayıcınızda açıp ürünleri sepete ekleyebilir, sipariş akışını test edebilirsiniz.
+
+---
+
+## 🛠️ Sorun Giderme ve Komutlar
+
 ```bash
-kubectl get gatewayclasses,gateways -A
-```
+# Kind kümesindeki mikroservisleri listeleme
+kubectl get pods,services,httproutes -n default
 
-Çıktıda `traefik` sınıfının ve `boutique-gateway` kaynağının hazır (`Programmed=True`) olduğunu teyit edin.
+# Traefik Gateway durumunu kontrol etme
+kubectl get gateway,gatewayclass -A
 
-### 3. Online Boutique Mikroservislerini Dağıtma
-Tüm mikroservisleri ve Gateway API `HTTPRoute` kuralını uygulayın:
-
-```bash
-./scripts/deploy-boutique.sh
-```
-
-Dağıtım durumunu izleyin:
-```bash
-kubectl get pods -w
-kubectl get httproutes
-```
-
-### 4. Doğrulama ve Sağlık Testi
-Sistemin tüm bileşenlerini otomatik olarak test edin:
-
-```bash
+# Doğrulama scriptini elle çalıştırma
 ./scripts/validate.sh
+
+# Jenkins loglarını anlık takip etme
+sudo docker logs -f training-jenkins
 ```
-
----
-
-## 🛡️ CI/CD & DevSecOps Pipeline (Jenkinsfile)
-
-Proje kök dizinindeki `Jenkinsfile`, kurumsal ölçekte bir DevSecOps boru hattı uygular:
-
-1. **Unit Tests & Code Coverage:** Go birim testleri koşturulur ve `coverage.out` üretilir.
-2. **SonarQube Quality Gate:** Statik kod analizi yapılır. Kod kokuları, güvenlik açıkları veya zafiyetler tanımlı eşikleri aşarsa boru hattı durdurulur (`waitForQualityGate()`).
-3. **Multi-Stage Docker Build:** Uygulama minimal ve güçlendirilmiş (hardened) imaj olarak derlenir.
-4. **Trivy Container Security Gate:** Derlenen imaj `HIGH` ve `CRITICAL` seviyesindeki CVE'ler için taranır. Kritik zafiyet tespit edilirse dağıtım engellenir.
-5. **Harbor Registry Push:** İmaj güvenli özel imaj deposuna (`harbor.devopsatolyesi.com`) etiketlenerek aktarılır.
-6. **Zero-Downtime Rollout:** Kubernetes kümesine güncel imajla kesintisiz güncelleme başlatılır.
-
----
-
-## 🔧 Dizin Yapısı
-
-```text
-.
-├── gateway-api/
-│   ├── 01-gateway-class.yaml     # Traefik v3 GatewayClass tanımı
-│   ├── 02-gateway.yaml           # HTTP & HTTPS dinleyici tanımları
-│   └── 03-httproute.yaml         # Frontend yönlendirme kuralları
-├── traefik/
-│   └── traefik-values.yaml       # Traefik v3 resmi Helm konfigürasyonu
-├── scripts/
-│   ├── setup-traefik-gateway.sh  # Gateway API ve Traefik kurulum betiği
-│   ├── deploy-boutique.sh        # Uygulama ve HTTPRoute dağıtım betiği
-│   └── validate.sh               # Otomatik sağlık ve doğrulama denetimi
-├── src/                          # 10 Mikroservisin kaynak kodları (Go, Python, Node, C#)
-├── release/                      # Kubernetes temel çalışma manifestoları
-├── Jenkinsfile                   # Enterprise Declarative CI/CD hattı
-├── sonar-project.properties      # SonarQube analiz konfigürasyonu
-└── trivy.yaml                    # Trivy güvenlik kapısı kuralları
-```
-
----
-
-## 🌐 Alan Adı ve Erişim
-
-Traefik Gateway API üzerinden yayınlanan adresler:
-* **Canlı E-Ticaret Arayüzü:** `https://ecommerce.devopsatolyesi.com` veya `http://localhost:8080`
-* **Traefik Web Dashboard:** `http://localhost:9000/dashboard/`
-
----
-
-## 📞 Destek ve Katkı
-Bu proje DevOps Atölyesi Eğitim Programı kapsamında hazırlanmıştır. Sorularınız ve katkılarınız için pull request açabilir veya eğitmeninizle iletişime geçebilirsiniz.
