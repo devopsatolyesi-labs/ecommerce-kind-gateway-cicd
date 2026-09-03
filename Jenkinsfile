@@ -7,8 +7,8 @@ pipeline {
         IMAGE_NAME        = 'online-boutique-frontend'
         IMAGE_TAG         = "${BUILD_NUMBER}"
         HARBOR_CREDS_ID   = 'harbor-credentials'
-        SONAR_HOST_URL    = 'https://sonar.devopsatolyesi.com'
-        KUBECONFIG_ID     = 'k8s-kubeconfig'
+        SONAR_HOST_URL    = env.SONAR_HOST_URL ?: 'http://training-sonarqube:9000'
+        KUBECONFIG        = env.KUBECONFIG ?: '/var/jenkins_home/.kube/config'
     }
 
     options {
@@ -40,13 +40,14 @@ pipeline {
             steps {
                 script {
                     withSonarQubeEnv('SonarQube') {
-                        sh '''
+                        sh """
                             sonar-scanner \
                                 -Dsonar.projectKey=online-boutique-frontend \
                                 -Dsonar.projectName="Online Boutique Frontend" \
                                 -Dsonar.sources=src/frontend \
-                                -Dsonar.exclusions="**/*_test.go,**/genproto/**"
-                        '''
+                                -Dsonar.exclusions="**/*_test.go,**/genproto/**" \
+                                -Dsonar.host.url=\${SONAR_HOST_URL}
+                        """
                     }
                 }
                 timeout(time: 5, unit: 'MINUTES') {
