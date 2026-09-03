@@ -64,6 +64,7 @@ jobs:
           }
         }
       }
+  - script: >
       pipelineJob('Online-Boutique-Blue-Green-Switch') {
         description('Interactive Blue-Green Traffic Cutover and Canary Shifting via Kubernetes Gateway API')
         definition {
