@@ -1,0 +1,39 @@
+name: "Cloudflare DNS Sync"
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "DNS Action (apply | delete)"
+        required: true
+        type: choice
+        options:
+          - apply
+          - delete
+        default: apply
+      student_id:
+        description: "Student ID (e.g. student100)"
+        required: true
+        type: string
+        default: student100
+      public_ip:
+        description: "Public IP of the Student VM"
+        required: true
+        type: string
+        default: "34.79.10.78"
+
+jobs:
+  sync-dns:
+    name: "Sync Cloudflare DNS Records"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "Synchronize DNS Records via Cloudflare API"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: |
+          chmod +x scripts/cloudflare-dns.sh
+          ./scripts/cloudflare-dns.sh "${{ inputs.action }}" "${{ inputs.student_id }}" "${{ inputs.public_ip }}"
