@@ -50,7 +50,7 @@ flowchart TD
 |---|---|---|---|
 | **Cockpit Web Terminal** | `https://student100-cockpit.devopsatolyesi.com` | `127.0.0.1:9090` | `student` / `BilgincIT454` |
 | **Jenkins as Code** | `https://student100-jenkins.devopsatolyesi.com` | `127.0.0.1:18080` | `admin` / `BilgincIT454` |
-| **SonarQube v10** | `https://student100-sonarqube.devopsatolyesi.com` | `127.0.0.1:19000` | `admin` / `admin` (veya `BilgincIT454`) |
+| **SonarQube Community (v26.9)** | `https://student100-sonarqube.devopsatolyesi.com` | `127.0.0.1:19000` | `admin` / `BilgincIT454!` |
 | **Harbor OCI Registry** | `https://student100-harbor.devopsatolyesi.com` | `127.0.0.1:18082` | `admin` / `BilgincIT454` (Pull: Herkese Açık) |
 | **Prometheus** | `https://student100-prometheus.devopsatolyesi.com` | `127.0.0.1:19090` | Doğrudan Açık |
 | **Grafana** | `https://student100-grafana.devopsatolyesi.com` | `127.0.0.1:13000` | `admin` / `BilgincIT454` |
@@ -102,18 +102,26 @@ sudo usermod -aG docker student
      -d '{"project_name": "ecommerce", "metadata": {"public": "true"}}'
    ```
 
-### 3.4. SonarQube v10 Kurulumu
+### 3.4. SonarQube Community (En Güncel Sürüm) Kurulumu
 1. Konteyner başlatma:
    ```bash
    docker run -d --name training-sonarqube \
+     --network training-net \
      -p 127.0.0.1:19000:9000 \
      -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
      --restart always \
-     sonarqube:10-community
+     sonarqube:community
    ```
-2. Analiz belirteci (token) oluşturma:
+2. Şifre değiştirme (Yeni sürüm kuralı: en az bir özel karakter gereklidir):
    ```bash
-   curl -u admin:admin -X POST "http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-pipeline"
+   curl -u admin:admin -X POST 'http://127.0.0.1:19000/api/users/change_password' \
+     -d 'login=admin' \
+     -d 'previousPassword=admin' \
+     -d 'password=BilgincIT454!'
+   ```
+3. Analiz belirteci (token) oluşturma:
+   ```bash
+   curl -u 'admin:BilgincIT454!' -X POST 'http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-pipeline'
    ```
 
 ### 3.5. Jenkins as Code (JCasC) Kurulumu
