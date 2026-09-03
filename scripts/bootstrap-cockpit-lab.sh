@@ -147,68 +147,16 @@ kubectl patch gateway traefik-gateway -n traefik --type='json' \
     -p='[{"op": "replace", "path": "/spec/listeners/0/allowedRoutes/namespaces/from", "value": "All"}]' 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
-# 5. Deploy Google Online Boutique Microservices & HTTPRoute
+# 5. Prepare Networks and Start SonarQube
 # ------------------------------------------------------------------------------
-log_info "4/7 Deploying Google Online Boutique microservices..."
-kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/microservices-demo/main/release/kubernetes-manifests.yaml
+log_info "4/7 Starting SonarQube (Port 19000)..."
+sudo docker network create training-net 2>/dev/null || true
 
-log_info "Applying Traefik Gateway API HTTPRoute for ${PREFIX}-kind.${DOMAIN}..."
-cat << EOF | kubectl apply -f -
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: frontend-route
-  namespace: default
-spec:
-  parentRefs:
-    - name: traefik-gateway
-      namespace: traefik
-      sectionName: web
-  hostnames:
-    - "${PREFIX}-kind.${DOMAIN}"
-    - "${PREFIX}-app1.${DOMAIN}"
-    - "${PREFIX}-k8s-app1.${DOMAIN}"
-    - "localhost"
-    - "127.0.0.1"
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
-      backendRefs:
-        - name: frontend
-          port: 80
-          weight: 1
-EOF
-
-# ------------------------------------------------------------------------------
-# 6. Start Local Jenkins and SonarQube Containers (Port 18080 & 19000)
-# ------------------------------------------------------------------------------
-log_info "5/7 Starting Jenkins (Port 18080) and SonarQube (Port 19000)..."
-
-# Jenkins
-if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^training-jenkins$'; then
-    sudo mkdir -p /var/jenkins_home
-    sudo chown -R 1000:1000 /var/jenkins_home 2>/dev/null || true
-    sudo docker run -d \
-        --name training-jenkins \
-        --restart unless-stopped \
-        -p 127.0.0.1:18080:8080 \
-        -p 127.0.0.1:50000:50000 \
-        -v /var/jenkins_home:/var/jenkins_home \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        jenkins/jenkins:lts-jdk17
-    log_success "Jenkins container started on 127.0.0.1:18080"
-else
-    log_info "Jenkins container already present. Ensuring running..."
-    sudo docker start training-jenkins >/dev/null 2>&1 || true
-fi
-
-# SonarQube
 if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^training-sonarqube$'; then
     sudo sysctl -w vm.max_map_count=262144 || true
     sudo docker run -d \
         --name training-sonarqube \
+        --network training-net \
         --restart unless-stopped \
         -p 127.0.0.1:19000:9000 \
         -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true \
@@ -217,7 +165,41 @@ if ! sudo docker ps -a --format '{{.Names}}' | grep -q '^training-sonarqube$'; t
 else
     log_info "SonarQube container already present. Ensuring running..."
     sudo docker start training-sonarqube >/dev/null 2>&1 || true
+    sudo docker network connect training-net training-sonarqube 2>/dev/null || true
 fi
+
+# ------------------------------------------------------------------------------
+# 6. Start Jenkins as Code (JCasC) Container (Port 18080)
+# ------------------------------------------------------------------------------
+log_info "5/7 Building and Starting Jenkins with JCasC (Port 18080)..."
+
+# Build JCasC image
+sudo docker build -t ecommerce-jenkins:latest "${ROOT_DIR}/jenkins-as-code/"
+
+# Prepare Jenkins home and configs
+sudo mkdir -p /var/jenkins_home/casc_configs /var/jenkins_home/.kube
+sudo kind get kubeconfig --internal --name "${CLUSTER_NAME}" | sudo tee /var/jenkins_home/.kube/config >/dev/null
+sudo cp "${ROOT_DIR}/jenkins-as-code/jenkins.yaml" /var/jenkins_home/casc_configs/jenkins.yaml
+sudo chown -R 1000:1000 /var/jenkins_home
+sudo chmod 666 /var/run/docker.sock
+
+# Run Jenkins container
+sudo docker rm -f training-jenkins 2>/dev/null || true
+sudo docker run -d \
+    --name training-jenkins \
+    --network training-net \
+    --restart unless-stopped \
+    -p 127.0.0.1:18080:8080 \
+    -p 127.0.0.1:50000:50000 \
+    -e CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs/jenkins.yaml \
+    -e SONAR_HOST_URL="http://training-sonarqube:9000" \
+    -e JENKINS_URL="https://${PREFIX}-jenkins.${DOMAIN}/" \
+    -v /var/jenkins_home:/var/jenkins_home \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    ecommerce-jenkins:latest
+
+sudo docker network connect kind training-jenkins 2>/dev/null || true
+log_success "Jenkins JCasC container started on 127.0.0.1:18080 (Job: Online-Boutique-Gateway-CI-CD ready)"
 
 # ------------------------------------------------------------------------------
 # 7. Configure Nginx Reverse Proxy (Cockpit, Kind, Jenkins, SonarQube)
@@ -325,6 +307,16 @@ EOF
 sudo ln -sf /etc/nginx/sites-available/cockpit-lab.conf /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
+
+# Configure Cockpit Origins for reverse proxy
+sudo mkdir -p /etc/cockpit
+cat << EOF | sudo tee /etc/cockpit/cockpit.conf
+[WebService]
+Origins = https://${PREFIX}-cockpit.${DOMAIN} wss://${PREFIX}-cockpit.${DOMAIN} https://${DOMAIN}
+ProtocolHeader = X-Forwarded-Proto
+AllowUnencrypted = true
+EOF
+sudo systemctl restart cockpit.socket cockpit 2>/dev/null || true
 
 # ------------------------------------------------------------------------------
 # 8. Verification & Summary
