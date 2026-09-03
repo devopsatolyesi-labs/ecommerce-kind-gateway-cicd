@@ -1,6 +1,6 @@
 # Google Online Boutique — Cloud-Native CI/CD & Traefik v3 Gateway API Platform
 
-Bu proje, Google Cloud'un mikroservis mimarisine sahip **Online Boutique** referans e-ticaret uygulamasının; klasik Ingress yerine yeni nesil **Kubernetes Gateway API (Traefik v3)** ile dış dünyaya açıldığı, **Jenkins as Code (JCasC)** ve **SonarQube** entegrasyonuyla otomatik derlenip dağıtıldığı kurumsal bir DevOps laboratuvarıdır.
+Bu proje, Google Cloud'un mikroservis mimarisine sahip **Online Boutique** referans e-ticaret uygulamasının; klasik Ingress yerine yeni nesil **Kubernetes Gateway API (Traefik v3)** ile dış dünyaya açıldığı, **Jenkins as Code (JCasC)**, **SonarQube v10** ve **Harbor OCI Registry** entegrasyonuyla otomatik derlenip dağıtıldığı kurumsal bir DevOps laboratuvarıdır.
 
 ---
 
@@ -8,33 +8,36 @@ Bu proje, Google Cloud'un mikroservis mimarisine sahip **Online Boutique** refer
 
 Laboratuvarda her öğrenci için tanımlanan standart alt alan adları (`student<ID>`):
 
-| Servis Adı | Açıklama | Canlı Erişim URL (Örnek: student100) |
-|---|---|---|
-| **Cockpit Web Terminal** | Linux ortam yönetimi ve web terminali | `https://student100-cockpit.devopsatolyesi.com` |
-| **Jenkins CI/CD** | JCasC ile yapılandırılmış dağıtım hattı | `https://student100-jenkins.devopsatolyesi.com` |
-| **SonarQube** | Statik kod kalitesi ve güvenlik kapısı | `https://student100-sonarqube.devopsatolyesi.com` |
-| **Harbor Registry** | Güvenli OCI konteyner imaj deposu | `https://student100-harbor.devopsatolyesi.com` |
-| **E-Commerce Storefront** | Gateway API üzerinden canlı uygulama | `https://student100-app1.devopsatolyesi.com` |
+| Servis Adı | Açıklama | Canlı Erişim URL (Örnek: student100) | Varsayılan Kimlik Bilgileri |
+|---|---|---|---|
+| **Cockpit Web Terminal** | Linux ortam yönetimi ve web terminali | `https://student100-cockpit.devopsatolyesi.com` | `student` / `BilgincIT454` |
+| **Jenkins CI/CD** | Dağıtım ve boru hattı otomasyonu (JDK 21) | `https://student100-jenkins.devopsatolyesi.com` | `admin` / `BilgincIT454` |
+| **SonarQube** | Statik kod kalitesi ve güvenlik kapısı (v10) | `https://student100-sonarqube.devopsatolyesi.com` | `admin` / `BilgincIT454` |
+| **Harbor Registry** | Özel OCI konteyner imaj deposu (v2.12) | `https://student100-harbor.devopsatolyesi.com` | `admin` / `BilgincIT454` |
+| **E-Commerce Storefront** | Gateway API üzerinden canlı mağaza | `https://student100-app1.devopsatolyesi.com` | Herkese Açık |
 
 ---
 
 ## 🎯 Adım Adım Öğrenci Laboratuvar Akışı
 
-Bu laboratuvarda uygulama kümeye statik olarak kurulmaz; öğrenci Jenkins üzerinde CI/CD boru hattını çalıştırarak uygulamanın derlenmesini, SonarQube'dan geçmesini ve Gateway API ile canlıya alınmasını sağlar.
+Bu laboratuvarda her işlem iki farklı yöntemle açıklanmıştır:
+1. **Yol A (Web Arayüzü / Menüden):** Görsel olarak panelleri tıklayarak öğrenmek isteyenler için.
+2. **Yol B (Komut Satırı / Kodla / API):** Hızlı, script edilebilir ve otomasyon odaklı ilerlemek isteyenler için.
 
 ```mermaid
 flowchart LR
-    A[1. Öğrenci Repoyu Çeker] --> B[2. SonarQube Tanımları & Token]
-    B --> C[3. Jenkins Kurulumu & JCasC]
-    C --> D[4. Jenkins Pipeline Build Now]
-    D --> E[5. Gateway API ile Uygulama Canlı!]
+    A[1. Repoyu Klonla] --> B[2. SonarQube Proje & PAT]
+    B --> C[3. Harbor Registry Proje]
+    C --> D[4. Jenkins Kurulum & Job Tanımı]
+    D --> E[5. Jenkins Build Now]
+    E --> F[6. Gateway API ile Uygulama Canlı!]
 ```
 
 ---
 
 ### Adım 1: Projeyi Klonlama
 
-Cockpit terminalinize (`student` kullanıcısı ile) giriş yapın ve herkese açık (public) repoyu klonlayın:
+Cockpit terminalinize (`student` kullanıcısı ile) bağlanın ve açık kaynak repoyu klonlayın:
 
 ```bash
 git clone https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git
@@ -43,9 +46,10 @@ cd ecommerce-kind-gateway-cicd
 
 ---
 
-### Adım 2: SonarQube (v10 Community) Başlatma & PAT Token Oluşturma
+### Adım 2: SonarQube Başlatma, Proje Açma & PAT Token Alma
 
-1. SonarQube konteynerini (Güncel kararlı **SonarQube 10-Community**) başlatın:
+Önce SonarQube konteynerini başlatın:
+
 ```bash
 sudo sysctl -w vm.max_map_count=262144
 sudo docker network create training-net 2>/dev/null || true
@@ -59,110 +63,231 @@ sudo docker run -d \
     sonarqube:10-community
 ```
 
-2. Tarayıcınızda SonarQube panelini açın:
-   * **URL:** `https://student<ID>-sonarqube.devopsatolyesi.com`
-   * **Kullanıcı:** `admin` | **Şifre:** `admin` (Yeni şifre belirleyin, örn: `BilgincIT454`)
+#### 🌐 Yol A: Web Menüsünden Yapılandırma
+1. Tarayıcınızda açın: `https://student<ID>-sonarqube.devopsatolyesi.com`
+2. `admin` / `admin` ile giriş yapın ve yeni şifrenizi belirleyin (Örn: `BilgincIT454`).
+3. **Proje Oluşturma:**
+   * Sağ üstteki **"+"** butonuna veya ana sayfadaki **"Create Project"** butonuna tıklayın ➔ **"Manually"** seçin.
+   * **Project display name:** `Online Boutique`
+   * **Project key:** `online-boutique-frontend`
+   * **Main branch name:** `main` ➔ **Set Up** butonuna tıklayın.
+4. **PAT (Personal Access Token) Üretme:**
+   * Sağ üst köşedeki **Kullanıcı Profil İkonuna** tıklayın ➔ **My Account** seçin.
+   * **Security** sekmesine geçin.
+   * **Generate Token** kutucuğuna isim olarak `jenkins-ci-token` yazın, Type: `User Token`, Expires in: `30 days` seçin ve **Generate** butonuna basın.
+   * Üretilen token'ı (Örn: `squ_bfa0de4cb...`) kopyalayın.
 
-3. Proje oluşturun ve Jenkins için erişim belirteci (PAT) üretin:
-> **Hızlı CLI Komutu:**
-> ```bash
-> # Şifre değiştirme
-> curl -s -u admin:admin -X POST 'http://127.0.0.1:19000/api/users/change_password?login=admin&previousPassword=admin&password=BilgincIT454'
->
-> # Proje oluşturma
-> curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/projects/create?name=Online+Boutique&project=online-boutique-frontend'
->
-> # Token üretme
-> curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-ci-token'
-> ```
+#### 💻 Yol B: Komut Satırı / API ile (Hızlı)
+```bash
+# Şifre güncelleme
+curl -s -u admin:admin -X POST 'http://127.0.0.1:19000/api/users/change_password?login=admin&previousPassword=admin&password=BilgincIT454'
 
----
+# Proje açma
+curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/projects/create?name=Online+Boutique&project=online-boutique-frontend'
 
----
-
-### Adım 3: Harbor OCI Registry ile Tanışma
-
-Laboratuvar ortamında kurumsal bir özel imaj deposu (Registry) hazır olarak çalışır:
-* **URL:** `https://student<ID>-harbor.devopsatolyesi.com`
-* **Kullanıcı:** `admin` | **Şifre:** `BilgincIT454`
-* **Hazır Proje:** `ecommerce` (Public)
-
-Jenkins derlediği frontend imajını hem bu Harbor deposuna etiketleyip push eder, hem de yerel Kind kümesine yükler.
+# Token üretme (çıktıdaki "token" değerini not edin)
+curl -s -u admin:BilgincIT454 -X POST 'http://127.0.0.1:19000/api/user_tokens/generate?name=jenkins-ci-token'
+```
 
 ---
 
-### Adım 4: Jenkins as Code (JCasC) ile Jenkins'i Başlatma
+### Adım 3: Harbor OCI Registry Yapılandırması
 
-Jenkins'in eklentilerle, hazır pipeline işiyle (`Online-Boutique-Gateway-CI-CD`), Harbor ve SonarQube kimlik bilgileriyle kurulum sihirbazına gerek kalmadan ayağa kalkması için:
+Harbor sistemde kurulu ve `18082` portunda çalışmaktadır.
+
+#### 🌐 Yol A: Web Menüsünden Yapılandırma
+1. Tarayıcınızda açın: `https://student<ID>-harbor.devopsatolyesi.com`
+2. `admin` / `BilgincIT454` ile giriş yapın.
+3. Sol menüden **Projects** sekmesine tıklayın ➔ **"+ NEW PROJECT"** butonuna basın.
+4. **Project Name:** `ecommerce` yazın.
+5. **Access Level:** `Public` onay kutusunu işaretleyin (böylece Kubernetes kümesi imajları kimlik doğrulamaya takılmadan çekebilir).
+6. **OK** butonuna basarak projeyi oluşturun.
+
+#### 💻 Yol B: Komut Satırı / API ile (Hızlı)
+```bash
+# Harbor üzerinde 'ecommerce' adında public proje açma
+curl -s -u admin:BilgincIT454 -X POST -H 'Content-Type: application/json' \
+  -d '{"project_name": "ecommerce", "metadata": {"public": "true"}}' \
+  http://127.0.0.1:18082/api/v2.0/projects
+
+# Docker CLI login testi
+echo 'BilgincIT454' | docker login student100-harbor.devopsatolyesi.com -u admin --password-stdin
+```
+
+---
+
+### Adım 4: Jenkins Kurulumu & Yapılandırması
+
+Jenkins'i iki şekilde kurup yönetebilirsiniz:
+
+#### 💻 Yol A: Kod ile Otomatik (Jenkins as Code - JCasC - Önerilen)
+Tüm pluginleri, admin şifresini, SonarQube token'ını, Harbor kimlik bilgilerini ve hazır pipeline işini tek YAML dosyasıyla yükleyin:
 
 ```bash
-# 1. JCasC Jenkins imajını derleyin (Kubectl, Docker CLI, SonarScanner dahil)
-sudo docker build -t ecommerce-jenkins:latest jenkins-as-code/
+mkdir -p ~/jenkins-lab && cd ~/jenkins-lab
 
-# 2. Kind kümesi erişimi için kubeconfig'i hazırlayın
+# 1. JCasC Konfigürasyonunu Oluşturun
+cat << 'EOF' > jenkins.yaml
+jenkins:
+  systemMessage: "DevOps Atolyesi — Student Capstone CI/CD Platform (Java 21 LTS)"
+  numExecutors: 4
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "BilgincIT454"
+        - id: "student"
+          password: "BilgincIT454"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - string:
+              scope: GLOBAL
+              id: "sonar-token"
+              description: "SonarQube Token"
+              secret: "${SONAR_TOKEN}"
+          - usernamePassword:
+              scope: GLOBAL
+              id: "harbor-credentials"
+              description: "Harbor Credentials"
+              username: "admin"
+              password: "BilgincIT454"
+
+unclassified:
+  location:
+    url: "https://student100-jenkins.devopsatolyesi.com/"
+  sonarGlobalConfiguration:
+    installations:
+      - name: "SonarQube"
+        serverUrl: "http://training-sonarqube:9000"
+        credentialsId: "sonar-token"
+
+jobs:
+  - script: >
+      pipelineJob('Online-Boutique-Gateway-CI-CD') {
+        description('Automated DevSecOps Pipeline with Traefik Gateway API')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git')
+                }
+                branch('*/main')
+              }
+            }
+            scriptPath('Jenkinsfile')
+          }
+        }
+      }
+EOF
+
+# 2. Kind Kümesi Erişim Dosyasını (Kubeconfig) ve Dizinleri Hazırlayın
 sudo mkdir -p /var/jenkins_home/casc_configs /var/jenkins_home/.kube
+sudo cp jenkins.yaml /var/jenkins_home/casc_configs/jenkins.yaml
 sudo kind get kubeconfig --internal --name ecommerce-kind-cluster | sudo tee /var/jenkins_home/.kube/config >/dev/null
-sudo cp jenkins-as-code/jenkins.yaml /var/jenkins_home/casc_configs/jenkins.yaml
 sudo chown -R 1000:1000 /var/jenkins_home
+sudo chmod 666 /var/run/docker.sock
 
-# 3. Jenkins konteynerini çalıştırın
+# 3. Jenkins Konteynerini Başlatın (Adım 2'deki token ile):
+export SONAR_TOKEN="<SONARQUBE_TOKEN>"
+
 sudo docker run -d \
     --name training-jenkins \
+    --network training-net \
     --restart unless-stopped \
     -p 127.0.0.1:18080:8080 \
     -p 127.0.0.1:50000:50000 \
     -e CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs/jenkins.yaml \
-    -e SONAR_TOKEN="<SONARQUBE_TOKEN>" \
+    -e SONAR_TOKEN="${SONAR_TOKEN}" \
     -e SONAR_HOST_URL="http://training-sonarqube:9000" \
     -v /var/jenkins_home:/var/jenkins_home \
     -v /var/run/docker.sock:/var/run/docker.sock \
     ecommerce-jenkins:latest
 
-# 4. Jenkins'i 'kind' ve 'training-net' ağlarına bağlayın
+# 4. Kind kümesi ağına bağlayın
 sudo docker network connect kind training-jenkins
-sudo docker network connect training-net training-jenkins
+```
+
+#### 🌐 Yol B: Web Menüsünden Adım Adım Manuel Yapılandırma
+Standart bir Jenkins ayağa kalktıktan sonra arayüz üzerinden ayarları yapmak için:
+1. **SonarQube Sunucusunu Tanımlama:**
+   * **Manage Jenkins** ➔ **System** menüsüne gidin.
+   * **SonarQube installations** başlığını bulun ➔ **Add SonarQube** butonuna basın.
+   * **Name:** `SonarQube`
+   * **Server URL:** `http://training-sonarqube:9000`
+   * **Server authentication token:** Yanındaki **Add** butonuna basın ➔ `Jenkins` seçin ➔ Kind: `Secret text`, Secret: `<SonarQube_PAT_Token>`, ID: `sonar-token` girip kaydedin.
+2. **Harbor Kimlik Bilgilerini Ekleme:**
+   * **Manage Jenkins** ➔ **Credentials** ➔ **System** ➔ **Global credentials (unrestricted)** ➔ **Add Credentials**.
+   * Kind: `Username with password`
+   * Username: `admin` | Password: `BilgincIT454` | ID: `harbor-credentials` ➔ **Create**.
+3. **Pipeline Job'ı Oluşturma:**
+   * Ana sayfadan **New Item** butonuna tıklayın.
+   * İsim olarak `Online-Boutique-Gateway-CI-CD` yazın ➔ **Pipeline** seçip **OK** deyin.
+   * **Pipeline** sekmesine inin ➔ Definition: `Pipeline script from SCM` seçin.
+   * SCM: `Git`
+   * Repository URL: `https://github.com/devopsatolyesi-labs/ecommerce-kind-gateway-cicd.git`
+   * Branch Specifier: `*/main`
+   * Script Path: `Jenkinsfile` ➔ **Save** butonuna basın.
+
+---
+
+### Adım 5: Pipeline Çalıştırma & Kümeye Dağıtım
+
+#### 🌐 Yol A: Web Menüsünden
+1. Açın: `https://student<ID>-jenkins.devopsatolyesi.com`
+2. **`Online-Boutique-Gateway-CI-CD`** işine tıklayın.
+3. Sol menüden **"Build Now"** butonuna basın.
+4. **Stage View** ekranından 8 aşamanın yeşile dönmesini izleyin:
+   * **1. SCM Checkout:** Kodlar GitHub'dan çekilir.
+   * **2. Unit Tests:** Go testleri çalıştırılır.
+   * **3. SonarQube Gate:** Kod analizi `training-sonarqube`'a iletilir ve denetlenir.
+   * **4. Docker Build:** Frontend konteyner imajı derlenir.
+   * **5. Trivy Scan:** Güvenlik açıkları taranır.
+   * **6. Harbor Push & Kind Load:** İmaj Harbor'a (`student100-harbor.../ecommerce/...`) push edilir ve Kind kümesine aktarılır.
+   * **7. Gateway API Deploy:** Mikroservisler ve Traefik v3 `HTTPRoute` uygulanır.
+   * **8. Smoke Test:** Uçtan uca doğrulama yapılır (`SUCCESS`).
+
+#### 💻 Yol B: Terminalden CLI / cURL ile Tetikleme
+```bash
+# Jenkins Crumb alarak derleme başlatma
+CRUMB=$(curl -s -c /tmp/jk-cookies -u admin:BilgincIT454 'http://127.0.0.1:18080/crumbIssuer/api/json' | jq -r .crumb)
+CRUMB_FIELD=$(curl -s -b /tmp/jk-cookies -u admin:BilgincIT454 'http://127.0.0.1:18080/crumbIssuer/api/json' | jq -r .crumbRequestField)
+
+curl -s -b /tmp/jk-cookies -u admin:BilgincIT454 -H "$CRUMB_FIELD: $CRUMB" -X POST 'http://127.0.0.1:18080/job/Online-Boutique-Gateway-CI-CD/build'
+
+# Konsol çıktısını anlık takip etme
+curl -s -u admin:BilgincIT454 'http://127.0.0.1:18080/job/Online-Boutique-Gateway-CI-CD/lastBuild/consoleText' | tail -n 30
 ```
 
 ---
 
-### Adım 5: Jenkins Pipeline'ını Çalıştırma
+### Adım 6: Canlı E-Ticaret Uygulamasını Doğrulama
 
-1. Tarayıcınızda Jenkins'e giriş yapın:
-   * **URL:** `https://student<ID>-jenkins.devopsatolyesi.com`
-   * **Kullanıcı:** `admin` (veya `student`) | **Şifre:** `BilgincIT454`
-2. Dashboard'da hazır bekleyen **`Online-Boutique-Gateway-CI-CD`** işine tıklayın.
-3. Sol menüden **"Build Now"** butonuna basın.
+Pipeline başarıyla bittiğinde uygulamanız Traefik Gateway API üzerinden Cloudflare ile güvenli (HTTPS) olarak yayındadır:
 
----
+🛍️ **Canlı Mağaza:** `https://student<ID>-app1.devopsatolyesi.com`
 
-### Adım 6: Pipeline Aşamalarını İzleme
+Terminalden doğrulamak için:
+```bash
+# Gateway rotalarını inceleme
+kubectl get httproutes -n default
 
-Pipeline şu 8 aşamayı sırasıyla icra eder:
-
-1. **1. Checkout SCM:** GitHub'daki açık kaynak repodan son kodları çeker.
-2. **2. Unit Tests & Code Coverage:** Go birim testlerini çalıştırır.
-3. **3. SonarQube Code Quality Gate:** `sonar-scanner` ile statik kod analizini `http://training-sonarqube:9000` adresine gönderir ve kalite denetimini tamamlar.
-4. **4. Docker Multi-Stage Build:** `src/frontend` için optimize edilmiş konteyner imajını üretir.
-5. **5. Container Security Scan (Trivy):** Üretilen imajı güvenlik açıkları (CVE) için tarar.
-6. **6. Harbor Registry Push & Kind Load:** İmajı Harbor OCI deposuna (`student<ID>-harbor.../ecommerce/online-boutique-frontend`) push eder ve Kind kümesine aktarır.
-7. **7. Deploy to Kubernetes (Gateway API):** Online Boutique mikroservislerini ve Traefik v3 `HTTPRoute` tanımlarını kümeye uygular.
-8. **8. Automated Smoke Test:** Uçtan uca sağlık denetimi yapar.
-
----
-
-### Adım 7: Canlı E-Ticaret Uygulamasını Doğrulama
-
-Pipeline başarıyla tamamlandığında (`SUCCESS`), e-ticaret mağazanız Traefik Gateway API üzerinden Cloudflare ile güvenli (HTTPS) olarak yayına girer:
-
-🌐 **Canlı Uygulama:** `https://student<ID>-app1.devopsatolyesi.com`
-
-Tarayıcınızda açıp ürünleri sepete ekleyebilir, sipariş akışını test edebilirsiniz.
+# HTTP yanıt kodunu test etme (HTTP/2 200 döner)
+curl -s -I https://student100-app1.devopsatolyesi.com/ | head -n 5
+```
 
 ---
 
 ## 📊 Hangi Projede Hangi İzleme (Monitoring) Kullanılmalı?
 
-DevOps eğitim programındaki 3 Capstone projesi arasında izleme araçları bilinçli olarak branşlaştırılmıştır:
+DevOps eğitim programındaki 3 Capstone projesi arasında izleme araçları 3 temel sütuna göre branşlaştırılmıştır:
 
 | Proje | İzleme Aracı | Odak Noktası & Kullanım Nedeni |
 |---|---|---|
@@ -172,18 +297,19 @@ DevOps eğitim programındaki 3 Capstone projesi arasında izleme araçları bil
 
 ---
 
-## 🛠️ Sorun Giderme ve Komutlar
+## 🛠️ Yararlı Yönetim Komutları
 
 ```bash
-# Kind kümesindeki mikroservisleri listeleme
+# Mikroservislerin durumunu izleme
 kubectl get pods,services,httproutes -n default
 
-# Traefik Gateway durumunu kontrol etme
+# Traefik Gateway kontrolü
 kubectl get gateway,gatewayclass -A
 
-# Doğrulama scriptini elle çalıştırma
-./scripts/validate.sh
+# Konteyner durumlarını görme
+sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 
-# Jenkins loglarını anlık takip etme
+# Jenkins ve Sonar logları
 sudo docker logs -f training-jenkins
+sudo docker logs -f training-sonarqube
 ```
